@@ -8,6 +8,7 @@ import wael_project.transaction_file_bridge.model.Transaction;
 import wael_project.transaction_file_bridge.processor.TransactionProcessor;
 
 import java.lang.reflect.Method;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -19,7 +20,7 @@ class TransactionProcessorPrivateMethodTest {
     private TransactionProcessor transactionProcessor;
 
     @Test
-    void parseTransaction_WithValidRow_CreatesTransaction() throws Exception {
+    void parseTransaction_WithValidRowAndOffsetDateTime_CreatesTransaction() throws Exception {
         List<String> row = List.of("TXN001", "NL91ABNA0417164300", "NL91ABNA0417164301", "100.50", "EUR", "2023-05-20T10:30:00Z");
 
         Method parseTransactionMethod = TransactionProcessor.class.getDeclaredMethod("parseTransaction", List.class);
@@ -37,6 +38,25 @@ class TransactionProcessorPrivateMethodTest {
     }
 
     @Test
+    void parseTransaction_WithValidRowAndLocalDateTime_CreatesTransaction() throws Exception {
+        List<String> row = List.of("TXN001", "NL91ABNA0417164300", "NL91ABNA0417164301", "100.50", "EUR", "2023-05-20T10:30:00");
+
+        Method parseTransactionMethod = TransactionProcessor.class.getDeclaredMethod("parseTransaction", List.class);
+        parseTransactionMethod.setAccessible(true);
+
+        Transaction transaction = (Transaction) parseTransactionMethod.invoke(transactionProcessor, row);
+
+        assertNotNull(transaction);
+        assertEquals("TXN001", transaction.getTransactionId());
+        assertEquals("NL91ABNA0417164300", transaction.getAccountFrom());
+        assertEquals("NL91ABNA0417164301", transaction.getAccountTo());
+        assertEquals(new java.math.BigDecimal("100.50"), transaction.getAmount());
+        assertEquals("EUR", transaction.getCurrency());
+        assertNotNull(transaction.getTimestamp());
+        assertTrue(transaction.getTimestamp() instanceof OffsetDateTime);
+    }
+
+    @Test
     void parseTransaction_WithInvalidColumnCount_ThrowsException() throws Exception {
         List<String> row = List.of("TXN001", "NL91ABNA0417164300"); // Only 2 columns
 
@@ -48,5 +68,19 @@ class TransactionProcessorPrivateMethodTest {
         });
 
         assertTrue(exception.getCause().getMessage().contains("Expected 6 columns, got 2"));
+    }
+
+    @Test
+    void parseTransaction_WithInvalidTimestamp_ThrowsException() throws Exception {
+        List<String> row = List.of("TXN001", "NL91ABNA0417164300", "NL91ABNA0417164301", "100.50", "EUR", "invalid-timestamp");
+
+        Method parseTransactionMethod = TransactionProcessor.class.getDeclaredMethod("parseTransaction", List.class);
+        parseTransactionMethod.setAccessible(true);
+
+        Exception exception = assertThrows(Exception.class, () -> {
+            parseTransactionMethod.invoke(transactionProcessor, row);
+        });
+
+        assertTrue(exception.getCause().getMessage().contains("Invalid timestamp format"));
     }
 }
