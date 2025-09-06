@@ -1,0 +1,10 @@
+apiVersion: route.openshift.io/v1
+kind: Route
+metadata:
+  name: transaction-file-bridge
+spec:
+  to:
+    kind: Service
+    name: transaction-file-bridge
+  port:
+    targetPort: 8080

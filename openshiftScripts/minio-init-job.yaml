@@ -1,0 +1,31 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: minio-init
+spec:
+  template:
+    spec:
+      containers:
+        - name: minio-client
+          image: minio/mc:latest
+          command: ["/bin/sh", "-c"]
+          args:
+            - |
+              # Use a writable directory in /tmp
+              export HOME=/tmp
+              export MC_CONFIG_DIR=/tmp/.mc
+              # Create the config directory
+              mkdir -p /tmp/.mc
+              # Wait for MinIO to be ready
+              until (mc alias set minio http://minio:9000 minioadmin minioadmin); do echo '...waiting...' && sleep 1; done;
+              # Check if bucket exists, create if it doesn't
+              if ! mc ls minio/transactions > /dev/null 2>&1; then
+                mc mb minio/transactions
+                mc policy set public minio/transactions
+                echo 'Bucket created and policy set'
+              else
+                echo 'Bucket already exists, updating policy'
+                mc policy set public minio/transactions
+              fi
+              echo 'MinIO initialization completed successfully';
+      restartPolicy: OnFailure

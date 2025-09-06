@@ -1,0 +1,69 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: transaction-file-bridge
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: transaction-file-bridge
+  template:
+    metadata:
+      labels:
+        app: transaction-file-bridge
+    spec:
+      containers:
+        - name: transaction-file-bridge
+          image: waelantar/transaction-file-bridge:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: MINIO_ENDPOINT
+              value: http://minio:9000
+            - name: MINIO_ACCESS_KEY
+              value: minioadmin
+            - name: MINIO_SECRET_KEY
+              value: minioadmin
+            - name: MINIO_BUCKET_NAME
+              value: transactions
+            - name: INPUT_PATH
+              value: /app/input
+            - name: OUTPUT_PATH
+              value: /app/output
+            - name: ERROR_PATH
+              value: /app/error
+            - name: JAVA_OPTS
+              value: "-Xmx512m -Xms256m"
+          volumeMounts:
+            - name: input-volume
+              mountPath: /app/input
+            - name: output-volume
+              mountPath: /app/output
+            - name: error-volume
+              mountPath: /app/error
+          livenessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /actuator/health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+      volumes:
+        - name: input-volume
+          persistentVolumeClaim:
+            claimName: input-pvc
+        - name: output-volume
+          persistentVolumeClaim:
+            claimName: output-pvc
+        - name: error-volume
+          persistentVolumeClaim:
+            claimName: error-pvc
