@@ -13,36 +13,13 @@ services:
     command: server /data --console-address ":9001"
     volumes:
       - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 20s
-      retries: 3
-      start_period: 40s
-    networks:
-      - transaction-network
-    restart: unless-stopped
-
-  minio-client:
-    image: minio/mc:latest
-    container_name: minio-client
-    depends_on:
-      minio:
-        condition: service_healthy
-    entrypoint: >
-      /bin/sh -c "
-      until (mc alias set minio http://minio:9000 minioadmin minioadmin) do echo '...waiting...' && sleep 1; done;
-      mc mb minio/transactions;
-      mc policy set public minio/transactions;
-      exit 0;
-      "
-    networks:
-      - transaction-network
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
 
   transaction-file-bridge:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: your-dockerhub-username/transaction-file-bridge:latest
     container_name: transaction-file-bridge
     ports:
       - "8080:8080"
@@ -56,28 +33,15 @@ services:
       ERROR_PATH: /app/error
       JAVA_OPTS: "-Xmx512m -Xms256m"
     volumes:
-      - /c/Users/antar/Downloads/transaction-file-bridge/transaction-file-bridge/src/main/resources/input:/app/input
-      - /c/Users/antar/Downloads/transaction-file-bridge/transaction-file-bridge/src/main/resources/output:/app/output
-      - /c/Users/antar/Downloads/transaction-file-bridge/transaction-file-bridge/src/main/resources/error:/app/error
+      - ./input:/app/input
+      - ./output:/app/output
+      - ./error:/app/error
     depends_on:
-      minio:
-        condition: service_healthy
-      minio-client:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    networks:
-      - transaction-network
-    restart: unless-stopped
+      - minio
+    deploy:
+      replicas: 1
+      restart_policy:
+        condition: on-failure
 
 volumes:
   minio_data:
-    driver: local
-
-networks:
-  transaction-network:
-    driver: bridge
