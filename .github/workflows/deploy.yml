@@ -8,7 +8,7 @@ on:
 
 env:
   REGISTRY: docker.io
-  IMAGE_NAME: your-dockerhub-username/transaction-file-bridge
+  IMAGE_NAME: waelantar/transaction-file-bridge
   OPENSHIFT_PROJECT: antarwael189-dev
   OPENSHIFT_APP_NAME: transaction-file-bridge
   MINIO_APP_NAME: minio
