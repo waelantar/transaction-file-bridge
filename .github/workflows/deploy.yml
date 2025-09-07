@@ -127,13 +127,18 @@ jobs:
         run: |
           # Debug information
           echo "=== DEBUG INFO ==="
-          echo "Image: ${{ needs.build.outputs.image }}"
+          echo "Registry: ${{ env.REGISTRY }}"
+          echo "Image Name: ${{ env.IMAGE_NAME }}"
+          echo "Full Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           echo "Digest: ${{ needs.build.outputs.digest }}"
           echo "Tag: ${{ needs.build.outputs.tag }}"
-          echo "Full image reference: ${{ needs.build.outputs.image }}@${{ needs.build.outputs.digest }}"
           
-          # Update the application deployment with the new image
-          oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=${{ needs.build.outputs.image }}@${{ needs.build.outputs.digest }}
+          # Construct the full image reference
+          FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "Full Image Reference: $FULL_IMAGE"
+          
+          # Update the application deployment with the new image (using tag instead of digest)
+          oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=$FULL_IMAGE:${{ github.sha }}
           
           # Verify the update
           echo "=== UPDATED DEPLOYMENT INFO ==="
