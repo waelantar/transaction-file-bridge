@@ -85,7 +85,8 @@ jobs:
       - name: Install OpenShift CLI
         uses: redhat-actions/oc-installer@v1
         with:
-          oc_version: '4.12'
+          oc_version: '4.6'
+
 
       - name: Log in to OpenShift
         uses: redhat-actions/oc-login@v1
