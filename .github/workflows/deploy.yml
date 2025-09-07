@@ -68,8 +68,12 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=inline
+
+      - name: Get image digest
+        id: digest
+        run: |
+          echo "digest=$(docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} --format '{{index .Manifest.Digest}}')" >> $GITHUB_OUTPUT
+
 
     outputs:
       image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
