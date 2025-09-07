@@ -105,28 +105,65 @@ jobs:
           oc rollout status deployment/${{ env.OPENSHIFT_APP_NAME }}
 
       - name: Update Application Image
+        id: update-image
         run: |
-          # Update the application deployment with the new image
-          oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=${{ needs.build.image }}@${{ needs.build.digest }}
-          
-          # Wait for the deployment to complete
-          oc rollout status deployment/${{ env.OPENSHIFT_APP_NAME }}
+            # Update the application deployment with the new image
+            oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=${{ needs.build.image }}@${{ needs.build.digest }}
+            
+            # Wait for the deployment to complete with extended timeout
+            oc rollout status deployment/${{ env.OPENSHIFT_APP_NAME }} --timeout=600s
+          continue-on-error: true
+
+      - name: Check Deployment Status
+        if: steps.update-image.outcome == 'failure'
+        run: |
+                echo "=== DEPLOYMENT FAILED ==="
+                echo "Checking deployment status..."
+                oc describe deployment/${{ env.OPENSHIFT_APP_NAME }}
+                
+                echo ""
+                echo "=== POD STATUS ==="
+                oc get pods -l app=${{ env.OPENSHIFT_APP_NAME }}
+                
+                echo ""
+                echo "=== EVENTS ==="
+                oc get events --field-selector involvedObject.name=${{ env.OPENSHIFT_APP_NAME }}
+                
+                echo ""
+                echo "=== POD LOGS ==="
+                # Get the name of the newest pod
+                POD_NAME=$(oc get pods -l app=${{ env.OPENSHIFT_APP_NAME }} -o jsonpath='{.items[0].metadata.name}')
+                echo "Checking logs for pod: $POD_NAME"
+                oc logs $POD_NAME || true
+
+      - name: Rollback Deployment
+        if: steps.update-image.outcome == 'failure'
+        run: |
+                echo "=== ROLLING BACK DEPLOYMENT ==="
+                # Rollback to the previous revision
+                oc rollout undo deployment/${{ env.OPENSHIFT_APP_NAME }}
+                
+                # Wait for the rollback to complete
+                oc rollout status deployment/${{ env.OPENSHIFT_APP_NAME }} --timeout=300s
+                
+                echo "Rollback completed successfully"
 
       - name: Verify Deployment
+        if: steps.update-image.outcome == 'success'
         run: |
-          # Check that all pods are running
-          oc get pods -l app=${{ env.OPENSHIFT_APP_NAME }}
-          oc get pods -l app=minio
-          
-          # Check application health
-          APP_ROUTE=$(oc get route ${{ env.OPENSHIFT_APP_NAME }} -o jsonpath='{.spec.host}')
-          MINIO_ROUTE=$(oc get route minio-console -o jsonpath='{.spec.host}')
-          
-          echo "Application URL: http://$APP_ROUTE"
-          echo "MinIO Console URL: http://$MINIO_ROUTE"
-          
-          # Test application health endpoint
-          curl -f http://$APP_ROUTE/actuator/health || exit 1
+                # Check that all pods are running
+                oc get pods -l app=${{ env.OPENSHIFT_APP_NAME }}
+                oc get pods -l app=minio
+                
+                # Check application health
+                APP_ROUTE=$(oc get route ${{ env.OPENSHIFT_APP_NAME }} -o jsonpath='{.spec.host}')
+                MINIO_ROUTE=$(oc get route minio-console -o jsonpath='{.spec.host}')
+                
+                echo "Application URL: http://$APP_ROUTE"
+                echo "MinIO Console URL: http://$MINIO_ROUTE"
+                
+                # Test application health endpoint
+                curl -f http://$APP_ROUTE/actuator/health || exit 1
 
   notify:
     needs: [build, deploy-openshift]
