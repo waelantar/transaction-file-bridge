@@ -68,6 +68,12 @@ jobs:
         id: digest
         run: echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
 
+      - name: Debug image information
+        run: |
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
+          echo "Digest: ${{ steps.build.outputs.digest }}"
+          echo "Full image reference: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
+
     outputs:
       image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
       digest: ${{ steps.digest.outputs.digest }}
@@ -110,11 +116,26 @@ jobs:
           oc rollout status deployment/minio
           oc rollout status deployment/${{ env.OPENSHIFT_APP_NAME }}
 
+      - name: Debug deployment before update
+        run: |
+          echo "=== CURRENT DEPLOYMENT INFO ==="
+          oc get deployment/${{ env.OPENSHIFT_APP_NAME}} -o yaml | grep -A 10 "image:"
+
       - name: Update Application Image
         id: update-image
         run: |
+          # Debug information
+          echo "=== DEBUG INFO ==="
+          echo "Image: ${{ needs.build.image }}"
+          echo "Digest: ${{ needs.build.digest }}"
+          echo "Full image reference: ${{ needs.build.image }}@${{ needs.build.digest }}"
+          
           # Update the application deployment with the new image
           oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=${{ needs.build.image }}@${{ needs.build.digest }}
+          
+          # Verify the update
+          echo "=== UPDATED DEPLOYMENT INFO ==="
+          oc get deployment/${{ env.OPENSHIFT_APP_NAME}} -o yaml | grep -A 10 "image:"
           
           # Wait for the deployment to complete with extended timeout
           oc rollout status deployment/${{ env.OPENSHIFT_APP_NAME }} --timeout=600s
