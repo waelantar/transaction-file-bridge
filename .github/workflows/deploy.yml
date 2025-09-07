@@ -137,8 +137,8 @@ jobs:
           FULL_IMAGE="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
           echo "Full Image Reference: $FULL_IMAGE"
           
-          # Update the application deployment with the new image (using tag instead of digest)
-          oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=$FULL_IMAGE:${{ github.sha }}
+          # Update the application deployment with the new image (using latest tag instead of commit SHA)
+          oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=$FULL_IMAGE:latest
           
           # Verify the update
           echo "=== UPDATED DEPLOYMENT INFO ==="
@@ -169,6 +169,21 @@ jobs:
           POD_NAME=$(oc get pods -l app=${{ env.OPENSHIFT_APP_NAME }} -o jsonpath='{.items[0].metadata.name}')
           echo "Checking logs for pod: $POD_NAME"
           oc logs $POD_NAME || true
+          
+          echo ""
+          echo "=== POD DESCRIBE ==="
+          oc describe pod $POD_NAME || true
+
+      - name: Check Image Pull Status
+        if: steps.update-image.outcome == 'failure'
+        run: |
+          echo "=== IMAGE PULL STATUS ==="
+          # Get the name of the newest pod
+          POD_NAME=$(oc get pods -l app=${{ env.OPENSHIFT_APP_NAME }} -o jsonpath='{.items[0].metadata.name}')
+          
+          # Check if the image is being pulled
+          oc describe pod $POD_NAME | grep -A 5 "Image:" || true
+          oc describe pod $POD_NAME | grep -A 5 "Events:" || true
 
       - name: Rollback Deployment
         if: steps.update-image.outcome == 'failure'
