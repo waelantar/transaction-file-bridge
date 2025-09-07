@@ -19,7 +19,7 @@ services:
         condition: on-failure
 
   transaction-file-bridge:
-    image: your-dockerhub-username/transaction-file-bridge:latest
+    image: waelanatar/transaction-file-bridge:latest
     container_name: transaction-file-bridge
     ports:
       - "8080:8080"
