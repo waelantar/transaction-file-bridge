@@ -66,20 +66,21 @@ jobs:
 
       - name: Get image digest
         id: digest
-        run: echo "digest=${{ steps.build.outputs.digest }}" >> $GITHUB_OUTPUT
-
-      - name: Debug image information
         run: |
-          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}"
-          echo "Digest: ${{ steps.build.outputs.digest }}"
-          echo "Full image reference: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}@${{ steps.build.outputs.digest }}"
+          DIGEST=$(docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} --format '{{index .Manifest.Digest}}')
+          echo "digest=$DIGEST" >> $GITHUB_OUTPUT
+
+      - name: Set outputs
+        id: outputs
+        run: |
+          echo "image=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}" >> $GITHUB_OUTPUT
+          echo "digest=$(docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} --format '{{index .Manifest.Digest}}')" >> $GITHUB_OUTPUT
+          echo "tag=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}" >> $GITHUB_OUTPUT
 
     outputs:
-      image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-      digest: ${{ steps.digest.outputs.digest }}
-      tags: |
-        ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
-        ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+      image: ${{ steps.outputs.outputs.image }}
+      digest: ${{ steps.outputs.outputs.digest }}
+      tag: ${{ steps.outputs.outputs.tag }}
 
   deploy-openshift:
     needs: build
@@ -126,12 +127,13 @@ jobs:
         run: |
           # Debug information
           echo "=== DEBUG INFO ==="
-          echo "Image: ${{ needs.build.image }}"
-          echo "Digest: ${{ needs.build.digest }}"
-          echo "Full image reference: ${{ needs.build.image }}@${{ needs.build.digest }}"
+          echo "Image: ${{ needs.build.outputs.image }}"
+          echo "Digest: ${{ needs.build.outputs.digest }}"
+          echo "Tag: ${{ needs.build.outputs.tag }}"
+          echo "Full image reference: ${{ needs.build.outputs.image }}@${{ needs.build.outputs.digest }}"
           
           # Update the application deployment with the new image
-          oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=${{ needs.build.image }}@${{ needs.build.digest }}
+          oc set image deployment/${{ env.OPENSHIFT_APP_NAME }} ${{ env.OPENSHIFT_APP_NAME }}=${{ needs.build.outputs.image }}@${{ needs.build.outputs.digest }}
           
           # Verify the update
           echo "=== UPDATED DEPLOYMENT INFO ==="
