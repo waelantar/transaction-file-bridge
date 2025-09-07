@@ -4,6 +4,8 @@ metadata:
   name: transaction-file-bridge
 spec:
   replicas: 1
+  strategy:
+    type: Recreate
   selector:
     matchLabels:
       app: transaction-file-bridge
