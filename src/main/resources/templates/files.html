@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>File List</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --warning: #f8961e;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border: #dee2e6;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(to right, var(--primary), var(--secondary));
+            color: white;
+            padding: 25px 40px;
+            text-align: center;
+        }
+
+        h1 {
+            font-weight: 600;
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+
+        .nav {
+            display: flex;
+            justify-content: center;
+            background: white;
+            padding: 15px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+
+        .nav a {
+            margin: 0 20px;
+            text-decoration: none;
+            color: var(--primary);
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 30px;
+            transition: all 0.3s ease;
+        }
+
+        .nav a:hover, .nav a.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        .refresh-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 10px rgba(67, 97, 238, 0.3);
+        }
+
+        .refresh-btn:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 15px rgba(67, 97, 238, 0.4);
+        }
+
+        .file-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+
+        .file-table th {
+            background: linear-gradient(to right, #edf2fb, #dbe4ff);
+            padding: 18px 20px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--dark);
+            text-transform: uppercase;
+            font-size: 0.85rem;
+            letter-spacing: 0.5px;
+        }
+
+        .file-table td {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .file-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .file-table tr:hover {
+            background-color: #f8f9ff;
+        }
+
+        .status {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .status.exists {
+            background: rgba(76, 201, 240, 0.2);
+            color: #0077b6;
+        }
+
+        .status.missing {
+            background: rgba(247, 37, 133, 0.2);
+            color: var(--danger);
+        }
+
+        .no-files {
+            text-align: center;
+            padding: 50px 20px;
+            background: #f8f9fa;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+
+        .no-files i {
+            font-size: 3rem;
+            color: var(--gray);
+            margin-bottom: 20px;
+        }
+
+        .no-files p {
+            font-size: 1.2rem;
+            color: var(--gray);
+            margin-bottom: 20px;
+        }
+
+        .upload-link {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 12px 25px;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .upload-link:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .message {
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 25px;
+            text-align: center;
+            font-weight: 500;
+        }
+
+        .error {
+            background: rgba(247, 37, 133, 0.15);
+            color: var(--danger);
+            border: 1px solid rgba(247, 37, 133, 0.3);
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--gray);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border);
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .file-table {
+                display: block;
+                overflow-x: auto;
+            }
+
+            header {
+                padding: 20px;
+            }
+
+            h1 {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1><i class="fas fa-folder-open"></i> File Management</h1>
+        <p class="subtitle">View and manage your transaction files</p>
+    </header>
+
+    <div class="nav">
+        <a href="/" class="active"><i class="fas fa-home"></i> Home</a>
+        <a href="/upload"><i class="fas fa-upload"></i> Upload File</a>
+        <a href="/files"><i class="fas fa-list"></i> View Files</a>
+        <a href="/health"><i class="fas fa-heartbeat"></i> Health Check</a>
+    </div>
+
+    <div class="content">
+        <div class="controls">
+            <h2><i class="fas fa-file-alt"></i> Files in Input Directory</h2>
+            <button class="refresh-btn" onclick="window.location.reload()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+
+        <!-- Error/message from controller -->
+        <div th:if="${message}" class="message error" th:text="${message}"></div>
+
+        <!-- Show table only when fileInfos is present AND not empty -->
+        <div th:if="${fileInfos != null and !#lists.isEmpty(fileInfos)}">
+            <table class="file-table">
+                <thead>
+                <tr>
+                    <th>File Name</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                </tr>
+                </thead>
+                <tbody>
+                <!-- iterate over FileInfo objects -->
+                <tr th:each="fileInfo : ${fileInfos}">
+                    <td><i class="far fa-file"></i> <span th:text="${fileInfo.name}">file-name</span></td>
+                    <td th:text="${#numbers.formatInteger(fileInfo.size, 0, 'COMMA')} + ' bytes'">0 bytes</td>
+
+                    <td>
+                        <span th:if="${fileInfo.exists}" class="status exists"><i class="fas fa-check-circle"></i> Exists</span>
+                        <span th:unless="${fileInfo.exists}" class="status missing"><i class="fas fa-exclamation-circle"></i> Missing</span>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Show this when no files -->
+        <div th:if="${fileInfos == null or #lists.isEmpty(fileInfos)}" class="no-files">
+            <i class="fas fa-file-export"></i>
+            <h3>No Files Found</h3>
+            <p>No files found in the input directory.</p>
+            <a href="/upload" class="upload-link"><i class="fas fa-plus"></i> Upload Your First File</a>
+        </div>
+    </div>
+
+    <footer>
+        <p>Transaction File Bridge System &copy; 2025</p>
+    </footer>
+</div>
+</body>
+</html>
